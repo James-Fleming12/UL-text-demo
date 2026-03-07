@@ -85,8 +85,7 @@ def main():
     print(f"Vocabulary size: {VOCAB_SIZE}, Sequence length: {SEQ_LEN}\n")
 
     dataset = ToyTextDataset(n_samples=8192, seq_len=SEQ_LEN)
-    loader  = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True,
-                         drop_last=True)
+    loader  = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, drop_last=True)
 
     trainer = ULTrainer(cfg, device=device)
 
@@ -136,6 +135,14 @@ def main():
     print(f"\nToken accuracy on 4 examples: {acc:.2%}")
 
     print("\nDone.")
+
+    torch.save({
+        "cfg"        : trainer.cfg,
+        "vae"        : trainer.vae.state_dict(),
+        "prior"      : trainer.prior.state_dict(),
+        "decoder"    : trainer.decoder.state_dict(),
+        "base_model" : trainer.base_model.state_dict(),
+    }, "model_trainer.pth")
 
 if __name__ == "__main__":
     main()

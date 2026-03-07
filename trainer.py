@@ -276,3 +276,12 @@ class ToyTextDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tensor:
         return torch.tensor(self.data[idx], dtype=torch.long)
+    
+def load_trainer(path: str, device: str = "cpu") -> "ULTrainer":
+    checkpoint = torch.load(path, map_location=device)
+    trainer = ULTrainer(checkpoint["cfg"], device=device)
+    trainer.vae.load_state_dict(checkpoint["vae"])
+    trainer.prior.load_state_dict(checkpoint["prior"])
+    trainer.decoder.load_state_dict(checkpoint["decoder"])
+    trainer.base_model.load_state_dict(checkpoint["base_model"])
+    return trainer
