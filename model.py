@@ -337,23 +337,34 @@ class MaskedTextDecoder(nn.Module):
 
     @torch.no_grad()
     def sample(self, z0: Tensor, n_steps: int = 20) -> Tensor:
-        """
-        Ancestral mask-filling sampler (greedy at each step for simplicity).
-        Starts fully masked and iteratively unmasks tokens.
-        """
-        B    = z0.size(0)
-        L    = self.seq_len
-        x    = torch.full((B, L), MASK_ID, dtype=torch.long, device=z0.device)
+        B, L = z0.size(0), self.seq_len
+        x = torch.full((B, L), MASK_ID, dtype=torch.long, device=z0.device)
 
         for i in range(n_steps, 0, -1):
-            t_val  = i / n_steps
-            t      = torch.full((B,), t_val, device=z0.device)
-            logits = self.forward(x, z0, t)              # (B, L, V)
-            probs  = torch.softmax(logits, dim=-1)
+            t = torch.full((B,), i / n_steps, device=z0.device)
+            logits = self.forward(x, z0, t)
+            probs = torch.softmax(logits, dim=-1)
 
-            # Sample tokens; keep already unmasked tokens fixed
             sampled = torch.multinomial(probs.reshape(-1, self.vocab_size), 1).reshape(B, L)
+
+            confidence = probs.gather(-1, sampled.unsqueeze(-1)).squeeze(-1)
+
+            n_unmask = max(1, round(L * (1 - (i - 1) / n_steps)))
+
             still_masked = (x == MASK_ID)
-            x[still_masked] = sampled[still_masked]
+            confidence[~still_masked] = -1.0
+
+            topk_idx = confidence.topk(min(n_unmask, still_masked.sum(dim=-1).max().item()), dim=-1).indices
+            
+            commit_mask = torch.zeros_like(still_masked)
+            commit_mask.scatter_(-1, topk_idx, True)
+            commit_mask &= still_masked
+            
+            x[commit_mask] = sampled[commit_mask]
+
+        if (x == MASK_ID).any():
+            t = torch.full((B,), 1 / n_steps, device=z0.device)
+            logits = self.forward(x, z0, t)
+            x[x == MASK_ID] = logits.argmax(-1)[x == MASK_ID]
 
         return x
