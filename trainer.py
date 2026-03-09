@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import torch
 from torch import Tensor
@@ -276,7 +276,74 @@ class ToyTextDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tensor:
         return torch.tensor(self.data[idx], dtype=torch.long)
-    
+
+class TinyStoriesDataset(Dataset):
+    """
+    Streams roneneldan/TinyStories from HuggingFace and tokenises with
+    the GPT-2 BPE tokeniser.
+
+    Each item is a LongTensor of shape (seq_len,).  Stories shorter than
+    seq_len are right-padded with the EOS token; longer stories are chunked
+    into non-overlapping windows so no text is wasted.
+
+    Token 0 ([MASK]) is *not* used by GPT-2, but the UL masked decoder
+    reserves it.  We therefore shift all GPT-2 ids up by 1 so that
+    id 0 remains free for [MASK].  vocab_size must be set to
+    tokeniser.vocab_size + 1 when building the model.
+    """
+
+    def __init__(self, seq_len: int  = 64, split: str  = "train", max_stories: Optional[int] = None, cache_dir: Optional[str] = None):
+        try:
+            from datasets import load_dataset
+            from transformers import GPT2TokenizerFast
+        except ImportError:
+            raise ImportError(
+                "TinyStories mode requires the 'datasets' and 'transformers' "
+                "packages.\n  pip install datasets transformers"
+            )
+
+        self.seq_len = seq_len
+
+        print(f"  Loading TinyStories ({split}) …")
+        raw = load_dataset("roneneldan/TinyStories", split=split, cache_dir=cache_dir)
+        if max_stories is not None:
+            raw = raw.select(range(min(max_stories, len(raw))))
+
+        print(f"  Tokenising {len(raw):,} stories …")
+        tok = GPT2TokenizerFast.from_pretrained("gpt2")
+        tok.pad_token = tok.eos_token
+        self.vocab_size = tok.vocab_size + 1
+        self.pad_id     = tok.eos_token_id + 1
+
+        self.chunks: List[List[int]] = []
+        for example in raw:
+            ids = tok.encode(example["text"], add_special_tokens=False)
+            ids = [i + 1 for i in ids]
+            for start in range(0, max(1, len(ids)), seq_len):
+                chunk = ids[start : start + seq_len]
+                if len(chunk) < seq_len:
+                    chunk += [self.pad_id] * (seq_len - len(chunk))
+                self.chunks.append(chunk)
+
+        print(f"  {len(self.chunks):,} chunks of length {seq_len}")
+
+    def __len__(self) -> int:
+        return len(self.chunks)
+
+    def __getitem__(self, idx: int) -> Tensor:
+        return torch.tensor(self.chunks[idx], dtype=torch.long)
+
+    @staticmethod
+    def decode(ids: List[int], skip_special: bool = True) -> str:
+        """Decode a list of (shifted) token ids back to a string."""
+        try:
+            from transformers import GPT2TokenizerFast
+        except ImportError:
+            return str(ids)
+        tok = GPT2TokenizerFast.from_pretrained("gpt2")
+        real_ids = [i - 1 for i in ids if 1 <= i <= tok.vocab_size]
+        return tok.decode(real_ids, skip_special_tokens=skip_special)
+
 def load_trainer(path: str, device: str = "cpu") -> "ULTrainer":
     checkpoint = torch.load(path, map_location=device)
     trainer = ULTrainer(checkpoint["cfg"], device=device)
