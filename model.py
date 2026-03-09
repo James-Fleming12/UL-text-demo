@@ -331,7 +331,7 @@ class MaskedTextDecoder(nn.Module):
 
         # SNR proxy for masked diffusion: λ(t) ≈ log((1-t)/t)
         lam_t = torch.log((1 - t + 1e-6) / (t + 1e-6))         # (B,)
-        w     = self.loss_factor * sigmoid_weight(lam_t, self.sigmoid_bias)  # (B,)
+        w = self.loss_factor * sigmoid_weight(lam_t, self.sigmoid_bias)  # (B,)
 
         return w.mean() * ce
 

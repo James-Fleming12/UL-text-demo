@@ -12,14 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 from model import alpha_sigma_from_logsnr
 from trainer import ToyTextDataset, ULConfig, ULTrainer, load_trainer, TinyStoriesDataset
 
-def _reconstruction_check(
-    trainer     : ULTrainer,
-    dataset     : Dataset,
-    device      : str,
-    n           : int = 4,
-    n_steps     : int = 30,
-    decode_text : bool = False,
-):
+def _reconstruction_check(trainer: ULTrainer, dataset: Dataset, device: str, n: int = 4, n_steps: int = 30, decode_text: bool = False):
     trainer.vae.eval()
     trainer.decoder.eval()
 
@@ -49,16 +42,8 @@ def _reconstruction_check(
     acc = (recon == test_tokens).float().mean().item()
     print(f"\nToken accuracy on {n} examples: {acc:.2%}")
 
-def _generation_samples(
-    trainer     : ULTrainer,
-    device      : str,
-    n           : int = 8,
-    n_prior_steps: int = 50,
-    n_dec_steps : int = 20,
-    decode_text : bool = False,
-):
-    samples = trainer.generate(n=n, n_prior_steps=n_prior_steps,
-                                n_dec_steps=n_dec_steps)
+def _generation_samples(trainer: ULTrainer, device: str, n: int = 8, n_prior_steps: int = 50, n_dec_steps: int = 20, decode_text: bool = False):
+    samples = trainer.generate(n=n, n_prior_steps=n_prior_steps, n_dec_steps=n_dec_steps)
     for i, seq in enumerate(samples):
         if decode_text:
             print(f"  Sample {i+1}: {TinyStoriesDataset.decode(seq)!r}")
@@ -103,7 +88,7 @@ def main():
     parser.add_argument("--eval-only", action="store_true", help="Skip training; only run generation and reconstruction checks")
 
     parser.add_argument("--n-prior-steps", type=int, default=50)
-    parser.add_argument("--n-dec-steps",   type=int, default=20)
+    parser.add_argument("--n-dec-steps", type=int, default=20)
     parser.add_argument("--n-gen-samples", type=int, default=8)
 
     args = parser.parse_args()
@@ -117,8 +102,8 @@ def main():
     decode_text = False
 
     if args.dataset == "toy":
-        seq_len    = args.seq_len
-        dataset    = ToyTextDataset(n_samples=args.n_samples, seq_len=seq_len)
+        seq_len = args.seq_len
+        dataset = ToyTextDataset(n_samples=args.n_samples, seq_len=seq_len)
         vocab_size = ToyTextDataset.VOCAB_SIZE
         print(f"Toy dataset  |  vocab={vocab_size}  seq_len={seq_len}  "
               f"n={len(dataset):,}\n")
@@ -127,10 +112,10 @@ def main():
         seq_len = args.seq_len if args.seq_len != 16 else 64   # sensible default
         print(f"TinyStories  |  seq_len={seq_len}")
         dataset    = TinyStoriesDataset(
-            seq_len    = seq_len,
-            split      = "train",
-            max_stories= args.max_stories,
-            cache_dir  = args.cache_dir,
+            seq_len = seq_len,
+            split = "train",
+            max_stories = args.max_stories,
+            cache_dir = args.cache_dir,
         )
         vocab_size  = dataset.vocab_size
         decode_text = True
@@ -142,23 +127,23 @@ def main():
     prior_n = args.prior_n_layers or args.n_layers
 
     cfg = ULConfig(
-        vocab_size     = vocab_size,
-        seq_len        = seq_len,
-        vae_d_model    = args.d_model,
-        vae_n_layers   = args.n_layers,
-        latent_dim     = args.latent_dim,
-        prior_d_model  = prior_d,
+        vocab_size = vocab_size,
+        seq_len = seq_len,
+        vae_d_model = args.d_model,
+        vae_n_layers = args.n_layers,
+        latent_dim = args.latent_dim,
+        prior_d_model = prior_d,
         prior_n_layers = prior_n,
-        lam_min_fixed  = args.lam_min_fixed,
-        dec_d_model    = args.d_model,
-        dec_n_layers   = args.n_layers,
-        sigmoid_bias   = args.sigmoid_bias,
-        loss_factor    = args.loss_factor,
-        lr             = args.lr,
-        batch_size     = args.batch_size,
-        n_epochs       = args.n_epochs,
-        stage2_epochs  = args.stage2_epochs,
-        log_every      = args.log_every,
+        lam_min_fixed = args.lam_min_fixed,
+        dec_d_model = args.d_model,
+        dec_n_layers = args.n_layers,
+        sigmoid_bias = args.sigmoid_bias,
+        loss_factor = args.loss_factor,
+        lr = args.lr,
+        batch_size = args.batch_size,
+        n_epochs = args.n_epochs,
+        stage2_epochs = args.stage2_epochs,
+        log_every = args.log_every,
     )
 
     if args.checkpoint:
@@ -168,10 +153,10 @@ def main():
     else:
         trainer = ULTrainer(cfg, device=device)
 
-    print(f"VAE params       : {_count_params(trainer.vae):,}")
-    print(f"Prior params     : {_count_params(trainer.prior):,}")
-    print(f"Decoder params   : {_count_params(trainer.decoder):,}")
-    print(f"Base model params: {_count_params(trainer.base_model):,}")
+    print(f"VAE params : {_count_params(trainer.vae):,}")
+    print(f"Prior params : {_count_params(trainer.prior):,}")
+    print(f"Decoder params : {_count_params(trainer.decoder):,}")
+    print(f"Base model params : {_count_params(trainer.base_model):,}")
     print()
 
     if not args.eval_only:
@@ -179,11 +164,11 @@ def main():
 
         print(f"\nSaving checkpoint to {args.save_path} …")
         torch.save({
-            "cfg"       : trainer.cfg,
-            "vae"       : trainer.vae.state_dict(),
-            "prior"     : trainer.prior.state_dict(),
-            "decoder"   : trainer.decoder.state_dict(),
-            "base_model": trainer.base_model.state_dict(),
+            "cfg" : trainer.cfg,
+            "vae" : trainer.vae.state_dict(),
+            "prior" : trainer.prior.state_dict(),
+            "decoder" : trainer.decoder.state_dict(),
+            "base_model" : trainer.base_model.state_dict(),
         }, args.save_path)
         print("Saved.\n")
 
@@ -193,10 +178,10 @@ def main():
     _generation_samples(
         trainer,
         device,
-        n            = args.n_gen_samples,
-        n_prior_steps= args.n_prior_steps,
-        n_dec_steps  = args.n_dec_steps,
-        decode_text  = decode_text,
+        n = args.n_gen_samples,
+        n_prior_steps = args.n_prior_steps,
+        n_dec_steps = args.n_dec_steps,
+        decode_text = decode_text,
     )
 
     print()
@@ -207,8 +192,8 @@ def main():
         trainer,
         dataset,
         device,
-        n           = 4,
-        n_steps     = args.n_dec_steps,
+        n = 4,
+        n_steps = args.n_dec_steps,
         decode_text = decode_text,
     )
 
