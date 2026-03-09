@@ -311,6 +311,7 @@ class TinyStoriesDataset(Dataset):
 
         print(f"  Tokenising {len(raw):,} stories …")
         tok = GPT2TokenizerFast.from_pretrained("gpt2")
+        tok.model_max_length = int(1e9) # suppress context-window warning
         tok.pad_token = tok.eos_token
         self.vocab_size = tok.vocab_size + 1
         self.pad_id     = tok.eos_token_id + 1
