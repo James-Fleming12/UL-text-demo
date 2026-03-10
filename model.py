@@ -35,14 +35,14 @@ class TextVAE(nn.Module):
     """
     def __init__(
         self,
-        model_name: str  = "Qwen/Qwen3-2B",
-        latent_dim: int  = 256,
-        n_encoder_layers: int  = 8,
+        model_name: str = "Qwen/Qwen3-2B",
+        latent_dim: int = 256,
+        n_encoder_layers: int = 8,
         freeze_backbone: bool = True,
-        vocab_size: int  = 152001,   # Qwen3 vocab + 1 for MASK
-        seq_len: int  = 128,
-        dec_d_model: int  = 512,
-        dec_n_layers: int  = 2,
+        vocab_size: int = 152001,   # Qwen3 vocab + 1 for MASK
+        seq_len: int = 128,
+        dec_d_model: int = 512,
+        dec_n_layers: int = 2,
     ):
         super().__init__()
 
