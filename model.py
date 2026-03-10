@@ -47,7 +47,7 @@ class TextVAE(nn.Module):
         super().__init__()
 
         print(f"  Loading Qwen3 encoder ({model_name}, first {n_encoder_layers} layers) …")
-        full = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype = torch.float16, device_map  = "cpu")
+        full = AutoModelForCausalLM.from_pretrained(model_name, dtype = torch.float16, device_map  = "cpu")
 
         self.embed_tokens = full.model.embed_tokens
         self.layers = nn.ModuleList(full.model.layers[:n_encoder_layers])
@@ -217,7 +217,7 @@ class MaskedTextDecoder(nn.Module):
         print(f"  Loading Qwen3 decoder backbone ({model_name}) …")
         self.backbone = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype = torch.float16,
+            dtype = torch.float16,
             device_map  = "cpu",
         )
         hidden_size = self.backbone.config.hidden_size
