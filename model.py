@@ -47,13 +47,12 @@ class TextVAE(nn.Module):
         super().__init__()
 
         print(f"  Loading Qwen3 encoder ({model_name}, first {n_encoder_layers} layers) …")
-        cfg_hf = AutoConfig.from_pretrained(model_name)
         full = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype = torch.float16, device_map  = "cpu")
 
         self.embed_tokens = full.model.embed_tokens
         self.layers = nn.ModuleList(full.model.layers[:n_encoder_layers])
-        self.norm = nn.LayerNorm(cfg_hf.hidden_size, elementwise_affine=False)
-        hidden_size = cfg_hf.hidden_size
+        hidden_size = full.model.embed_tokens.embedding_dim
+        self.norm = nn.LayerNorm(hidden_size, elementwise_affine=False)
         del full
 
         if freeze_backbone:
