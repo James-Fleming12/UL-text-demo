@@ -83,10 +83,10 @@ class TextVAE(nn.Module):
         cos, sin = self.rotary_emb(x, position_ids)
         cos, sin = cos.half(), sin.half()
         for layer in self.layers:
-            x = layer(x, position_embeddings=(cos, sin))[0]
+            x = layer(x, position_embeddings=(cos, sin))
         x = self.norm(x)
         x = x.mean(dim=1)
-        return self.proj(x)
+        return self.proj(x.float())
 
     def decode_logits(self, tokens: Tensor, z: Tensor) -> Tensor:
         return self.ce_decoder(tokens, z)
@@ -238,8 +238,8 @@ class MaskedTextDecoder(nn.Module):
             nn.Linear(latent_dim, hidden_size),
             nn.GELU(),
             nn.Linear(hidden_size, n_latent_tokens * hidden_size),
-        )
-        self.time_proj = nn.Linear(hidden_size, hidden_size)
+        ).to(torch.float16)
+        self.time_proj = nn.Linear(hidden_size, hidden_size).to(torch.float16)
 
     def _prefix_embeds(self, z0: Tensor, t: Tensor) -> Tensor:
         """Build (B, n_latent_tokens, H) prefix from z₀ and t."""
