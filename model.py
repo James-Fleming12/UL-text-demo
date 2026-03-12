@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from transformers import AutoModelForCausalLM, AutoConfig
+from transformers import AutoModelForCausalLM
 
 MASK_ID = 0
 
@@ -84,7 +84,8 @@ class TextVAE(nn.Module):
         cos, sin = cos.half(), sin.half()
         for layer in self.layers:
             x = layer(x, position_embeddings=(cos, sin))[0]
-        x = self.norm(x).mean(dim=1)
+        x = self.norm(x)
+        x = x.mean(dim=1)
         return self.proj(x)
 
     def decode_logits(self, tokens: Tensor, z: Tensor) -> Tensor:
@@ -225,9 +226,9 @@ class MaskedTextDecoder(nn.Module):
             dtype = torch.float16,
             device_map  = "cpu",
         )
-        hidden_size = self.backbone.config.hidden_size
+        hidden_size = self.backbone.model.embed_tokens.embedding_dim
         self.vocab_size = vocab_size or self.backbone.config.vocab_size
-
+        
         if freeze_backbone:
             for p in self.backbone.parameters():
                 p.requires_grad = False
