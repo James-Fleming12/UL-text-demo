@@ -51,6 +51,7 @@ class TextVAE(nn.Module):
 
         self.embed_tokens = full.model.embed_tokens
         self.layers = nn.ModuleList(full.model.layers[:n_encoder_layers])
+        self.rotary_emb = full.model.rotary_emb
         hidden_size = full.model.embed_tokens.embedding_dim
         self.norm = nn.LayerNorm(hidden_size, elementwise_affine=False)
         del full
@@ -76,9 +77,12 @@ class TextVAE(nn.Module):
         )
 
     def encode(self, tokens: Tensor) -> Tensor:
+        B, L = tokens.shape
+        position_ids = torch.arange(L, device=tokens.device).unsqueeze(0).expand(B, -1)
         x = self.embed_tokens(tokens).to(self.proj[0].weight.dtype)
+        cos, sin = self.rotary_emb(x, position_ids)
         for layer in self.layers:
-            x = layer(x)[0]
+            x = layer(x, position_embeddings=(cos, sin))[0]
         x = self.norm(x).mean(dim=1)
         return self.proj(x)
 
