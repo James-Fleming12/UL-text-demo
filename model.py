@@ -81,6 +81,7 @@ class TextVAE(nn.Module):
         position_ids = torch.arange(L, device=tokens.device).unsqueeze(0).expand(B, -1)
         x = self.embed_tokens(tokens).to(self.proj[0].weight.dtype)
         cos, sin = self.rotary_emb(x, position_ids)
+        cos, sin = cos.half(), sin.half()
         for layer in self.layers:
             x = layer(x, position_embeddings=(cos, sin))[0]
         x = self.norm(x).mean(dim=1)
