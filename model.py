@@ -79,7 +79,7 @@ class TextVAE(nn.Module):
     def encode(self, tokens: Tensor) -> Tensor:
         B, L = tokens.shape
         position_ids = torch.arange(L, device=tokens.device).unsqueeze(0).expand(B, -1)
-        x = self.embed_tokens(tokens).to(self.proj[0].weight.dtype)
+        x = self.embed_tokens(tokens).half()
         cos, sin = self.rotary_emb(x, position_ids)
         cos, sin = cos.half(), sin.half()
         for layer in self.layers:
